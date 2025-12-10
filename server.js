@@ -19,30 +19,29 @@ app.get("/", (req, res) => {
 app.get("/vocab", async (req, res) => {
   const session = driver.session();
 
-try {
-  const result = await session.run(`
-    MATCH (w:Word)
-    RETURN w.text AS text,
-           w.gender AS gender,
-           w.pos AS pos,
-           w.difficulty AS difficulty,
-           w.frequency AS frequency
-  `);
+  try {
+    const result = await session.run(`
+      MATCH (w:Word)
+      RETURN 
+        w.text AS text,
+        w.gender AS gender,
+        w.pos AS pos,
+        w.difficulty AS difficulty,
+        w.frequency AS frequency
+    `);
 
-  const words = result.records.map(r => ({
-    text: r.get("text"),
-    gender: r.get("gender"),
-    pos: r.get("pos"),
-    difficulty: r.get("difficulty"),
-    frequency: r.get("frequency")
-  }));
+    const words = result.records.map(r => ({
+      text: r.get("text"),
+      gender: r.get("gender"),
+      pos: r.get("pos"),
+      difficulty: r.get("difficulty"),
+      frequency: r.get("frequency"),
+    }));
 
-  res.json({ words });
-}
-
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: "Query failed." });
+    res.json({ words });
+  } catch (error) {
+    console.error("Error fetching vocab:", error);
+    res.status(500).json({ error: "Failed to fetch vocab" });
   } finally {
     await session.close();
   }
