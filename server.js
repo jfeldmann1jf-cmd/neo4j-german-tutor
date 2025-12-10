@@ -1,5 +1,36 @@
 import express from "express";
 import neo4j from "neo4j-driver";
+import crypto from "crypto";
+
+// --- Create a new learning session ---
+app.post("/api/session", async (req, res) => {
+  const session = driver.session();
+  const sessionId = crypto.randomUUID ? crypto.randomUUID() : Date.now().toString();
+
+  try {
+    const result = await session.run(
+      `
+      CREATE (s:Session {
+        sessionId: $sessionId,
+        score: 0,
+        level_estimate: null,
+        confidence: null,
+        timestamp: datetime()
+      })
+      RETURN s.sessionId AS sessionId
+      `,
+      { sessionId }
+    );
+
+    const createdId = result.records[0].get("sessionId");
+    res.json({ sessionId: createdId });
+  } catch (error) {
+    console.error("Error creating session:", error);
+    res.status(500).json({ error: "Failed to create session" });
+  } finally {
+    await session.close();
+  }
+});
 
 const app = express();
 app.use(express.json());
