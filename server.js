@@ -175,7 +175,8 @@ app.post("/api/log-response", async (req, res) => {
         exerciseType: exerciseType || "unknown",
         prompt,
         userAnswer,
-        correct
+        correct,
+        exerciseId   // ✅ FIX: now we pass exerciseId
       }
     );
 
