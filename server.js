@@ -47,6 +47,29 @@ app.get("/vocab", async (req, res) => {
   }
 });
 
+// --- API endpoint used by ChatGPT ---
+app.get("/api/words", async (req, res) => {
+  const session = driver.session();
+
+  try {
+    const result = await session.run(`
+      MATCH (w:Word)
+      RETURN w.text AS word
+    `);
+
+    const words = result.records.map(r => ({
+      word: r.get("word")
+    }));
+
+    res.json({ words });
+  } catch (err) {
+    console.error("Error in /api/words:", err);
+    res.status(500).json({ error: "Failed to fetch words" });
+  } finally {
+    await session.close();
+  }
+});
+
 // Start server
 app.listen(3000, () => {
   console.log("Server running on port 3000");
