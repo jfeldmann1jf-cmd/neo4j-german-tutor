@@ -15,7 +15,7 @@ app.get("/", (req, res) => {
   res.send("Neo4j Tutor Server is running.");
 });
 
-// Example: return all vocab words
+// Example: return all vocab words (full details)
 app.get("/vocab", async (req, res) => {
   const session = driver.session();
 
@@ -38,6 +38,7 @@ app.get("/vocab", async (req, res) => {
       frequency: r.get("frequency"),
     }));
 
+    // place for extra logic if you want to enrich words
     res.json({ words });
   } catch (error) {
     console.error("Error fetching vocab:", error);
@@ -47,19 +48,32 @@ app.get("/vocab", async (req, res) => {
   }
 });
 
-// --- API endpoint used by ChatGPT ---
+// --- API endpoint used by ChatGPT / frontend ---
 app.get("/api/words", async (req, res) => {
   const session = driver.session();
 
   try {
     const result = await session.run(`
       MATCH (w:Word)
-      RETURN w.text AS word
+      RETURN 
+        w.text AS text,
+        w.gender AS gender,
+        w.pos AS pos,
+        w.difficulty AS difficulty,
+        w.frequency AS frequency
     `);
 
-    const words = result.records.map(r => ({
-      word: r.get("word")
+    const words = result.records.map((r, index) => ({
+      id: index, // simple index-based id for now
+      text: r.get("text"),
+      gender: r.get("gender"),
+      pos: r.get("pos"),
+      difficulty: r.get("difficulty"),
+      frequency: r.get("frequency"),
     }));
+
+    // 🔧 later we can add spaced repetition metadata here
+    // e.g. nextReviewDue, successRate, etc.
 
     res.json({ words });
   } catch (err) {
