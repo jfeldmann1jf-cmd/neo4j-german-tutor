@@ -194,6 +194,74 @@ app.post("/api/log-response", async (req, res) => {
   }
 });
 
+// --- Log a batch of learner responses (called once per 5 questions) ---
+app.post("/api/log-batch", async (req, res) => {
+  const session = driver.session();
+
+  const { sessionId, responses } = req.body;
+
+  if (!sessionId || !Array.isArray(responses) || responses.length === 0) {
+    return res.status(400).json({ error: "Invalid batch payload" });
+  }
+
+  try {
+    const tx = session.beginTransaction();
+
+    for (const r of responses) {
+      const exerciseId = randomUUID();
+
+      await tx.run(
+        `
+        MATCH (s:Session {sessionId: $sessionId})
+        MATCH (w:Word {text: $wordText})
+
+        CREATE (e:Exercise {
+          id: $exerciseId,
+          type: $exerciseType,
+          prompt: $prompt
+        })
+
+        CREATE (r:Response {
+          text: $userAnswer,
+          timestamp: datetime(),
+          correct: $correct
+        })
+
+        CREATE (s)-[:GAVE_RESPONSE]->(r)
+        CREATE (e)-[:TARGETS]->(w)
+
+        FOREACH (_ IN CASE WHEN $correct = false THEN [1] ELSE [] END |
+          MERGE (ve:VocabError {word: $wordText})
+          ON CREATE SET ve.count = 1
+          ON MATCH SET ve.count = coalesce(ve.count, 0) + 1
+          MERGE (s)-[:HAD_VOCAB_ERROR]->(ve)
+        )
+        `,
+        {
+          sessionId,
+          wordText: r.wordText,
+          exerciseType: r.exerciseType || "unknown",
+          prompt: r.prompt,
+          userAnswer: r.userAnswer,
+          correct: r.correct,
+          exerciseId
+        }
+      );
+    }
+
+    await tx.commit();
+    res.json({
+      success: true,
+      saved: responses.length
+    });
+  } catch (error) {
+    console.error("Error logging batch:", error);
+    res.status(500).json({ error: "Failed to log batch" });
+  } finally {
+    await session.close();
+  }
+});
+
 // Start server
 app.listen(3000, () => {
   console.log("Server running on port 3000");
